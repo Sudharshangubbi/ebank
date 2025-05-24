@@ -7,7 +7,9 @@ struct Account {
     int accountNumber;
     string customerName;
     double balance;
-    vector<string> transactions; // Mini statement
+    vector<string> transactions;
+    bool hasLoan = false;
+    double loanAmount = 0.0;
 };
 
 vector<Account> accounts;
@@ -42,6 +44,7 @@ void searchAccount() {
             cout << "Account Number: " << acc.accountNumber << endl;
             cout << "Customer Name: " << acc.customerName << endl;
             cout << "Balance: $" << acc.balance << endl;
+            cout << "Loan Status: " << (acc.hasLoan ? "Active ($" + to_string(acc.loanAmount) + ")" : "None") << endl;
             return;
         }
     }
@@ -107,6 +110,37 @@ void printMiniStatement() {
     cout << "Account not found.\n";
 }
 
+void applyForLoan() {
+    int accNo;
+    double amount;
+    cout << "Enter account number: ";
+    cin >> accNo;
+
+    for (auto& acc : accounts) {
+        if (acc.accountNumber == accNo) {
+            if (acc.hasLoan) {
+                cout << "Loan already active: $" << acc.loanAmount << "\n";
+                return;
+            }
+
+            cout << "Enter loan amount to apply: ";
+            cin >> amount;
+            if (amount <= 0) {
+                cout << "Invalid loan amount.\n";
+                return;
+            }
+
+            acc.hasLoan = true;
+            acc.loanAmount = amount;
+            acc.transactions.push_back("Loan Applied: $" + to_string(amount));
+            cout << "Loan application successful for $" << amount << "\n";
+            return;
+        }
+    }
+
+    cout << "Account not found.\n";
+}
+
 int main() {
     int choice;
 
@@ -123,7 +157,8 @@ int main() {
     cout << "6. Display Accounts" << endl;
     cout << "7. Search Account" << endl;
     cout << "8. Mini Statement" << endl;
-    cout << "9. Exit" << endl;
+    cout << "9. Apply for Loan" << endl;
+    cout << "10. Exit" << endl;
 
     cout << "\nEnter your choice: ";
     cin >> choice;
@@ -143,6 +178,9 @@ int main() {
             break;
         case 8:
             printMiniStatement();
+            break;
+        case 9:
+            applyForLoan();
             break;
         default:
             cout << "This service is not implemented yet.\n";
