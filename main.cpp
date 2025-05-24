@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <vector>
 using namespace std;
 
 struct Account {
@@ -8,6 +9,7 @@ struct Account {
     double balance;
 };
 
+vector<Account> accounts;
 int nextAccountNumber = 1001;
 
 void createAccount() {
@@ -19,10 +21,34 @@ void createAccount() {
     cout << "Enter initial deposit amount: ";
     cin >> acc.balance;
 
+    accounts.push_back(acc);
+
     cout << "\nAccount created successfully!\n";
     cout << "Account Number: " << acc.accountNumber << endl;
     cout << "Customer Name: " << acc.customerName << endl;
     cout << "Balance: $" << acc.balance << endl;
+}
+
+void searchAccount() {
+    int accNo;
+    cout << "Enter account number to search: ";
+    cin >> accNo;
+
+    bool found = false;
+    for (const auto& acc : accounts) {
+        if (acc.accountNumber == accNo) {
+            cout << "\nAccount Found!\n";
+            cout << "Account Number: " << acc.accountNumber << endl;
+            cout << "Customer Name: " << acc.customerName << endl;
+            cout << "Balance: $" << acc.balance << endl;
+            found = true;
+            break;
+        }
+    }
+
+    if (!found) {
+        cout << "Account not found.\n";
+    }
 }
 
 int main() {
@@ -39,15 +65,21 @@ int main() {
     cout << "4. Withdraw" << endl;
     cout << "5. Display Customers" << endl;
     cout << "6. Display Accounts" << endl;
-    cout << "7. Exit" << endl;
+    cout << "7. Search Account" << endl;
+    cout << "8. Exit" << endl;
 
     cout << "\nEnter your choice: ";
     cin >> choice;
 
-    if (choice == 2) {
-        createAccount();
-    } else {
-        cout << "This service is not implemented yet.\n";
+    switch (choice) {
+        case 2:
+            createAccount();
+            break;
+        case 7:
+            searchAccount();
+            break;
+        default:
+            cout << "This service is not implemented yet.\n";
     }
 
     return 0;
