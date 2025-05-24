@@ -7,6 +7,7 @@ struct Account {
     int accountNumber;
     string customerName;
     double balance;
+    vector<string> transactions; // Mini statement
 };
 
 vector<Account> accounts;
@@ -16,11 +17,12 @@ void createAccount() {
     Account acc;
     acc.accountNumber = nextAccountNumber++;
     cout << "Enter customer name: ";
-    cin.ignore(); // clear input buffer
+    cin.ignore();
     getline(cin, acc.customerName);
     cout << "Enter initial deposit amount: ";
     cin >> acc.balance;
 
+    acc.transactions.push_back("Account created with initial deposit: $" + to_string(acc.balance));
     accounts.push_back(acc);
 
     cout << "\nAccount created successfully!\n";
@@ -57,6 +59,7 @@ void depositAmount() {
             cout << "Enter amount to deposit: ";
             cin >> amount;
             acc.balance += amount;
+            acc.transactions.push_back("Deposited: $" + to_string(amount));
             cout << "Deposit successful. New balance: $" << acc.balance << endl;
             return;
         }
@@ -76,9 +79,27 @@ void withdrawAmount() {
             cin >> amount;
             if (acc.balance >= amount) {
                 acc.balance -= amount;
+                acc.transactions.push_back("Withdrew: $" + to_string(amount));
                 cout << "Withdrawal successful. Remaining balance: $" << acc.balance << endl;
             } else {
                 cout << "Insufficient balance.\n";
+            }
+            return;
+        }
+    }
+    cout << "Account not found.\n";
+}
+
+void printMiniStatement() {
+    int accNo;
+    cout << "Enter account number for mini statement: ";
+    cin >> accNo;
+
+    for (const auto& acc : accounts) {
+        if (acc.accountNumber == accNo) {
+            cout << "\nMini Statement for Account #" << acc.accountNumber << ":\n";
+            for (const string& t : acc.transactions) {
+                cout << "- " << t << endl;
             }
             return;
         }
@@ -101,7 +122,8 @@ int main() {
     cout << "5. Display Customers" << endl;
     cout << "6. Display Accounts" << endl;
     cout << "7. Search Account" << endl;
-    cout << "8. Exit" << endl;
+    cout << "8. Mini Statement" << endl;
+    cout << "9. Exit" << endl;
 
     cout << "\nEnter your choice: ";
     cin >> choice;
@@ -118,6 +140,9 @@ int main() {
             break;
         case 7:
             searchAccount();
+            break;
+        case 8:
+            printMiniStatement();
             break;
         default:
             cout << "This service is not implemented yet.\n";
