@@ -34,21 +34,56 @@ void searchAccount() {
     cout << "Enter account number to search: ";
     cin >> accNo;
 
-    bool found = false;
     for (const auto& acc : accounts) {
         if (acc.accountNumber == accNo) {
             cout << "\nAccount Found!\n";
             cout << "Account Number: " << acc.accountNumber << endl;
             cout << "Customer Name: " << acc.customerName << endl;
             cout << "Balance: $" << acc.balance << endl;
-            found = true;
-            break;
+            return;
         }
     }
+    cout << "Account not found.\n";
+}
 
-    if (!found) {
-        cout << "Account not found.\n";
+void depositAmount() {
+    int accNo;
+    double amount;
+    cout << "Enter account number: ";
+    cin >> accNo;
+
+    for (auto& acc : accounts) {
+        if (acc.accountNumber == accNo) {
+            cout << "Enter amount to deposit: ";
+            cin >> amount;
+            acc.balance += amount;
+            cout << "Deposit successful. New balance: $" << acc.balance << endl;
+            return;
+        }
     }
+    cout << "Account not found.\n";
+}
+
+void withdrawAmount() {
+    int accNo;
+    double amount;
+    cout << "Enter account number: ";
+    cin >> accNo;
+
+    for (auto& acc : accounts) {
+        if (acc.accountNumber == accNo) {
+            cout << "Enter amount to withdraw: ";
+            cin >> amount;
+            if (acc.balance >= amount) {
+                acc.balance -= amount;
+                cout << "Withdrawal successful. Remaining balance: $" << acc.balance << endl;
+            } else {
+                cout << "Insufficient balance.\n";
+            }
+            return;
+        }
+    }
+    cout << "Account not found.\n";
 }
 
 int main() {
@@ -74,6 +109,12 @@ int main() {
     switch (choice) {
         case 2:
             createAccount();
+            break;
+        case 3:
+            depositAmount();
+            break;
+        case 4:
+            withdrawAmount();
             break;
         case 7:
             searchAccount();
