@@ -1,355 +1,333 @@
+// changes by shreyas
+// Structured account handling.
+//Modular code with class-based architecture.
+//Loan and statement tracking.
+//Update, search, and display capabilities.
+//File-based persistence using binary I/O.
+
 #include <iostream>
+#include <fstream>
+#include <iomanip>
+#include <ctime>
 #include <string>
-#include <vector>
 using namespace std;
 
-struct Customer {
-    int id;
+class Account {
+protected:
+    int accNumber;
     string name;
-    string email;
-};
-
-struct Account {
-    int accountNumber;
-    int customerId;
-    string customerName;
+    char type;
     double balance;
-    vector<string> transactions;
-    bool hasLoan = false;
-    double loanPrincipal = 0.0;
-    double loanInterestRate = 0.0;
-    int loanDurationMonths = 0;
-    double totalLoanDue = 0.0;
+    double loanAmount;
+    string statement;
+
+public:
+    Account() {
+        accNumber = 0;
+        name = "";
+        type = 'S';
+        balance = 0.0;
+        loanAmount = 0.0;
+        statement = "";
+    }
+
+    void createAccount() {
+        cout << "\nEnter The account No. : ";
+        cin >> accNumber;
+        cout << "\n\nEnter The Name of The account Holder : ";
+        cin.ignore();
+        getline(cin, name);
+        cout << "\nEnter Type of The account (C/S) : ";
+        cin >> type;
+        type = toupper(type);
+        cout << "\nEnter The Initial amount (>=500 for Saving and >=1000 for Current ): ";
+        cin >> balance;
+        while ((type == 'S' && balance < 500) || (type == 'C' && balance < 1000)) {
+            cout << "Insufficient balance. Please re-enter: ";
+            cin >> balance;
+        }
+        cout << "\n\nAccount Created..";
+    }
+
+    void showAccount() const {
+        cout << "\nAccount No. : " << accNumber;
+        cout << "\nAccount Holder Name : " << name;
+        cout << "\nType of Account : " << type;
+        cout << "\nBalance amount : " << balance;
+        cout << "\nLoan Taken : " << loanAmount;
+    }
+
+    void modify() {
+        cout << "\nAccount No. : " << accNumber;
+        cout << "\nModify Account Holder Name : ";
+        cin.ignore();
+        getline(cin, name);
+        cout << "\nModify Type of Account : ";
+        cin >> type;
+        type = toupper(type);
+        cout << "\nModify Balance amount : ";
+        cin >> balance;
+    }
+
+    void deposit(double amt) {
+        balance += amt;
+        addStatement("Deposited", amt);
+    }
+
+    void withdraw(double amt) {
+        if (amt > balance) {
+            cout << "\nInsufficient balance!";
+            return;
+        }
+        balance -= amt;
+        addStatement("Withdrawn", amt);
+    }
+
+    void addLoan(double amt) {
+        loanAmount += amt;
+        addStatement("Loan taken", amt);
+    }
+
+    void displayStatement() const {
+        cout << "\nMini Statement:\n";
+        cout << statement;
+    }
+
+    void addStatement(string action, double amt) {
+        time_t now = time(0);
+        char* dt = ctime(&now);
+        statement += action + " of " + to_string(amt) + " on " + dt;
+    }
+
+    int getAccountNumber() const {
+        return accNumber;
+    }
+
+    double getBalance() const {
+        return balance;
+    }
+
+    char getType() const {
+        return type;
+    }
 };
 
-vector<Customer> customers;
-vector<Account> accounts;
-int nextCustomerId = 1;
-int nextAccountNumber = 1001;
-
-// Add a customer
-void addCustomer() {
-    Customer c;
-    c.id = nextCustomerId++;
-    cout << "Enter customer name: ";
-    cin.ignore();
-    getline(cin, c.name);
-    cout << "Enter email: ";
-    getline(cin, c.email);
-    customers.push_back(c);
-    cout << "Customer added successfully! ID: " << c.id << "\n";
+void writeAccount() {
+    Account ac;
+    ofstream outFile("account.dat", ios::binary | ios::app);
+    ac.createAccount();
+    outFile.write(reinterpret_cast<char*>(&ac), sizeof(Account));
+    outFile.close();
 }
 
-// Display all customers
-void displayCustomers() {
-    if (customers.empty()) {
-        cout << "No customers found.\n";
-        return;
+void displayAccount(int n) {
+    Account ac;
+    bool found = false;
+    ifstream inFile("account.dat", ios::binary);
+    while (inFile.read(reinterpret_cast<char*>(&ac), sizeof(Account))) {
+        if (ac.getAccountNumber() == n) {
+            ac.showAccount();
+            found = true;
+        }
     }
-    cout << "\n--- Customers List ---\n";
-    for (const auto& c : customers) {
-        cout << "ID: " << c.id << ", Name: " << c.name << ", Email: " << c.email << "\n";
-    }
+    inFile.close();
+    if (!found)
+        cout << "\n\nAccount number does not exist";
 }
 
-// Display all accounts
-void displayAccounts() {
-    if (accounts.empty()) {
-        cout << "No accounts found.\n";
-        return;
+void modifyAccount(int n) {
+    Account ac;
+    fstream File;
+    bool found = false;
+    File.open("account.dat", ios::binary | ios::in | ios::out);
+    while (!File.eof() && found == false) {
+        streampos pos = File.tellg();
+        File.read(reinterpret_cast<char*>(&ac), sizeof(Account));
+        if (ac.getAccountNumber() == n) {
+            ac.showAccount();
+            cout << "\n\nEnter The New Details of account" << endl;
+            ac.modify();
+            File.seekp(pos);
+            File.write(reinterpret_cast<char*>(&ac), sizeof(Account));
+            cout << "\n\n\t Record Updated";
+            found = true;
+        }
     }
-    cout << "\n--- Accounts List ---\n";
-    for (const auto& a : accounts) {
-        cout << "Account No: " << a.accountNumber << ", Customer ID: " << a.customerId 
-             << ", Name: " << a.customerName << ", Balance: $" << a.balance << "\n";
-        cout << "Loan Status: " << (a.hasLoan ? "Active (Due: $" + to_string(a.totalLoanDue) + ")" : "None") << "\n";
-    }
+    File.close();
+    if (!found)
+        cout << "\n\n Record Not Found ";
 }
 
-// Find customer by ID, returns nullptr if not found
-Customer* findCustomer(int id) {
-    for (auto& c : customers) {
-        if (c.id == id) return &c;
+void deleteAccount(int n) {
+    Account ac;
+    ifstream inFile("account.dat", ios::binary);
+    ofstream outFile("temp.dat", ios::binary);
+    while (inFile.read(reinterpret_cast<char*>(&ac), sizeof(Account))) {
+        if (ac.getAccountNumber() != n) {
+            outFile.write(reinterpret_cast<char*>(&ac), sizeof(Account));
+        }
     }
-    return nullptr;
+    inFile.close();
+    outFile.close();
+    remove("account.dat");
+    rename("temp.dat", "account.dat");
+    cout << "\n\n\tRecord Deleted ..";
 }
 
-// Find account by account number, returns nullptr if not found
-Account* findAccount(int accNo) {
-    for (auto& a : accounts) {
-        if (a.accountNumber == accNo) return &a;
+void displayAll() {
+    Account ac;
+    ifstream inFile("account.dat", ios::binary);
+    cout << "\n\n\t\tACCOUNT HOLDER LIST\n\n";
+    cout << "====================================================\n";
+    cout << "A/c no.      NAME           Type  Balance  Loan\n";
+    cout << "====================================================\n";
+    while (inFile.read(reinterpret_cast<char*>(&ac), sizeof(Account))) {
+        cout << setw(10) << ac.getAccountNumber() << " ";
+        cout << setw(15) << ac.getType() << " ";
+        cout << setw(5) << ac.getType() << " ";
+        cout << setw(10) << fixed << setprecision(2) << ac.getBalance() << " ";
+        cout << endl;
     }
-    return nullptr;
+    inFile.close();
 }
 
-// Create account for a customer
-void createAccount() {
-    int custId;
-    cout << "Enter customer ID: ";
-    cin >> custId;
-    Customer* c = findCustomer(custId);
-    if (!c) {
-        cout << "Customer not found. Please add customer first.\n";
-        return;
+void depositWithdraw(int n, int option) {
+    double amt;
+    bool found = false;
+    Account ac;
+    fstream File;
+    File.open("account.dat", ios::binary | ios::in | ios::out);
+    while (!File.eof() && found == false) {
+        streampos pos = File.tellg();
+        File.read(reinterpret_cast<char*>(&ac), sizeof(Account));
+        if (ac.getAccountNumber() == n) {
+            ac.showAccount();
+            if (option == 1) {
+                cout << "\n\n\tTO DEPOSIT AMOUNT ";
+                cout << "\n\nEnter The amount to be deposited: ";
+                cin >> amt;
+                ac.deposit(amt);
+            } else if (option == 2) {
+                cout << "\n\n\tTO WITHDRAW AMOUNT ";
+                cout << "\n\nEnter The amount to be withdrawn: ";
+                cin >> amt;
+                ac.withdraw(amt);
+            }
+            File.seekp(pos);
+            File.write(reinterpret_cast<char*>(&ac), sizeof(Account));
+            cout << "\n\n\t Record Updated";
+            found = true;
+        }
     }
-
-    Account acc;
-    acc.accountNumber = nextAccountNumber++;
-    acc.customerId = c->id;
-    acc.customerName = c->name;
-    cout << "Enter initial deposit amount: ";
-    cin >> acc.balance;
-
-    acc.transactions.push_back("Account created with initial deposit: $" + to_string(acc.balance));
-    accounts.push_back(acc);
-
-    cout << "Account created successfully!\nAccount Number: " << acc.accountNumber << "\n";
+    File.close();
+    if (!found)
+        cout << "\n\n Record Not Found ";
 }
 
-// Deposit amount into account
-void depositAmount() {
-    int accNo;
+void loanSection(int n) {
+    Account ac;
+    fstream File;
     double amount;
-    cout << "Enter account number: ";
-    cin >> accNo;
-
-    Account* acc = findAccount(accNo);
-    if (!acc) {
-        cout << "Account not found.\n";
-        return;
+    bool found = false;
+    File.open("account.dat", ios::binary | ios::in | ios::out);
+    while (!File.eof() && found == false) {
+        streampos pos = File.tellg();
+        File.read(reinterpret_cast<char*>(&ac), sizeof(Account));
+        if (ac.getAccountNumber() == n) {
+            ac.showAccount();
+            cout << "\nEnter loan amount to apply: ";
+            cin >> amount;
+            ac.addLoan(amount);
+            File.seekp(pos);
+            File.write(reinterpret_cast<char*>(&ac), sizeof(Account));
+            cout << "\nLoan processed successfully!";
+            found = true;
+        }
     }
-
-    cout << "Enter amount to deposit: ";
-    cin >> amount;
-    if(amount <= 0){
-        cout << "Invalid amount.\n";
-        return;
-    }
-
-    acc->balance += amount;
-    acc->transactions.push_back("Deposited: $" + to_string(amount));
-    cout << "Deposit successful. New balance: $" << acc->balance << endl;
+    File.close();
+    if (!found)
+        cout << "\n\nAccount not found!";
 }
 
-// Withdraw amount from account
-void withdrawAmount() {
-    int accNo;
-    double amount;
-    cout << "Enter account number: ";
-    cin >> accNo;
-
-    Account* acc = findAccount(accNo);
-    if (!acc) {
-        cout << "Account not found.\n";
-        return;
+void miniStatement(int n) {
+    Account ac;
+    ifstream inFile("account.dat", ios::binary);
+    bool found = false;
+    while (inFile.read(reinterpret_cast<char*>(&ac), sizeof(Account))) {
+        if (ac.getAccountNumber() == n) {
+            ac.displayStatement();
+            found = true;
+            break;
+        }
     }
-
-    cout << "Enter amount to withdraw: ";
-    cin >> amount;
-    if(amount <= 0){
-        cout << "Invalid amount.\n";
-        return;
-    }
-
-    if (acc->balance >= amount) {
-        acc->balance -= amount;
-        acc->transactions.push_back("Withdrew: $" + to_string(amount));
-        cout << "Withdrawal successful. Remaining balance: $" << acc->balance << endl;
-    } else {
-        cout << "Insufficient balance.\n";
-    }
-}
-
-// Print mini statement for account
-void printMiniStatement() {
-    int accNo;
-    cout << "Enter account number for mini statement: ";
-    cin >> accNo;
-
-    Account* acc = findAccount(accNo);
-    if (!acc) {
-        cout << "Account not found.\n";
-        return;
-    }
-
-    cout << "\nMini Statement for Account #" << acc->accountNumber << ":\n";
-    for (const string& t : acc->transactions) {
-        cout << "- " << t << endl;
-    }
-}
-
-// Apply for loan with simple interest calculation
-void applyForLoan() {
-    int accNo;
-    cout << "Enter account number: ";
-    cin >> accNo;
-
-    Account* acc = findAccount(accNo);
-    if (!acc) {
-        cout << "Account not found.\n";
-        return;
-    }
-
-    if (acc->hasLoan) {
-        cout << "Loan already active. Please repay the existing loan first.\n";
-        return;
-    }
-
-    double principal;
-    cout << "Enter loan principal amount: ";
-    cin >> principal;
-    if(principal <= 0){
-        cout << "Invalid loan amount.\n";
-        return;
-    }
-
-    double interestRate;
-    int durationMonths;
-    cout << "Enter annual interest rate (in %): ";
-    cin >> interestRate;
-    if(interestRate < 0){
-        cout << "Invalid interest rate.\n";
-        return;
-    }
-    cout << "Enter loan duration (in months): ";
-    cin >> durationMonths;
-    if(durationMonths <= 0){
-        cout << "Invalid loan duration.\n";
-        return;
-    }
-
-    double totalInterest = (principal * interestRate * durationMonths) / (100.0 * 12.0);
-    acc->loanPrincipal = principal;
-    acc->loanInterestRate = interestRate;
-    acc->loanDurationMonths = durationMonths;
-    acc->totalLoanDue = principal + totalInterest;
-    acc->hasLoan = true;
-
-    acc->transactions.push_back("Loan Approved: Principal $" + to_string(principal) + 
-                                ", Interest $" + to_string(totalInterest) + 
-                                ", Total Due $" + to_string(acc->totalLoanDue));
-    
-    cout << "\nLoan approved!\n";
-    cout << "Principal: $" << principal << "\n";
-    cout << "Total Payable (with interest): $" << acc->totalLoanDue << "\n";
-    cout << "Monthly EMI: $" << acc->totalLoanDue / durationMonths << "\n";
-}
-
-// Repay loan amount
-void repayLoan() {
-    int accNo;
-    cout << "Enter account number: ";
-    cin >> accNo;
-
-    Account* acc = findAccount(accNo);
-    if (!acc) {
-        cout << "Account not found.\n";
-        return;
-    }
-
-    if (!acc->hasLoan) {
-        cout << "No active loan for this account.\n";
-        return;
-    }
-
-    cout << "Remaining loan due: $" << acc->totalLoanDue << "\n";
-    double amount;
-    cout << "Enter repayment amount: ";
-    cin >> amount;
-    if(amount <= 0){
-        cout << "Invalid amount.\n";
-        return;
-    }
-
-    if (amount >= acc->totalLoanDue) {
-        acc->transactions.push_back("Loan repaid in full: $" + to_string(acc->totalLoanDue));
-        acc->totalLoanDue = 0;
-        acc->hasLoan = false;
-        acc->loanPrincipal = 0;
-        acc->loanInterestRate = 0;
-        acc->loanDurationMonths = 0;
-        cout << "Loan fully repaid.\n";
-    } else {
-        acc->totalLoanDue -= amount;
-        acc->transactions.push_back("Partial loan repayment: $" + to_string(amount));
-        cout << "Partial repayment done. Remaining due: $" << acc->totalLoanDue << "\n";
-    }
+    inFile.close();
+    if (!found)
+        cout << "\n\nAccount not found!";
 }
 
 int main() {
-    int choice;
-
-    cout << "----------------------------------" << endl;
-    cout << "   Welcome to ATM Service" << endl;
-    cout << "----------------------------------" << endl;
-
-    while (true) {
-        cout << "\n--- ATM Services ---" << endl;
-        cout << "1. Add Customer" << endl;
-        cout << "2. Create Account" << endl;
-        cout << "3. Deposit" << endl;
-        cout << "4. Withdraw" << endl;
-        cout << "5. Display Customers" << endl;
-        cout << "6. Display Accounts" << endl;
-        cout << "7. Search Account (by Account No)" << endl;
-        cout << "8. Mini Statement" << endl;
-        cout << "9. Apply for Loan" << endl;
-        cout << "10. Repay Loan" << endl;
-        cout << "11. Exit" << endl;
-
-        cout << "\nEnter your choice: ";
-        cin >> choice;
-
-        switch (choice) {
-            case 1:
-                addCustomer();
+    char ch;
+    int num;
+    do {
+        system("cls");
+        cout << "\n\n\tBANK MANAGEMENT SYSTEM";
+        cout << "\n\n\t01. NEW ACCOUNT";
+        cout << "\n\n\t02. DEPOSIT AMOUNT";
+        cout << "\n\n\t03. WITHDRAW AMOUNT";
+        cout << "\n\n\t04. BALANCE ENQUIRY";
+        cout << "\n\n\t05. ALL ACCOUNT HOLDER LIST";
+        cout << "\n\n\t06. CLOSE AN ACCOUNT";
+        cout << "\n\n\t07. MODIFY AN ACCOUNT";
+        cout << "\n\n\t08. APPLY FOR LOAN";
+        cout << "\n\n\t09. MINI STATEMENT";
+        cout << "\n\n\t10. EXIT";
+        cout << "\n\n\tSelect Your Option (1-10): ";
+        cin >> ch;
+        system("cls");
+        switch (ch) {
+            case '1':
+                writeAccount();
                 break;
-            case 2:
-                createAccount();
+            case '2':
+                cout << "\n\n\tEnter The account No. : "; cin >> num;
+                depositWithdraw(num, 1);
                 break;
-            case 3:
-                depositAmount();
+            case '3':
+                cout << "\n\n\tEnter The account No. : "; cin >> num;
+                depositWithdraw(num, 2);
                 break;
-            case 4:
-                withdrawAmount();
+            case '4':
+                cout << "\n\n\tEnter The account No. : "; cin >> num;
+                displayAccount(num);
                 break;
-            case 5:
-                displayCustomers();
+            case '5':
+                displayAll();
                 break;
-            case 6:
-                displayAccounts();
+            case '6':
+                cout << "\n\n\tEnter The account No. : "; cin >> num;
+                deleteAccount(num);
                 break;
-            case 7: {
-                int accNo;
-                cout << "Enter account number: ";
-                cin >> accNo;
-                Account* acc = findAccount(accNo);
-                if (acc) {
-                    cout << "\nAccount Details:\n";
-                    cout << "Account No: " << acc->accountNumber << "\nCustomer ID: " << acc->customerId << "\nName: " << acc->customerName << "\nBalance: $" << acc->balance << "\n";
-                    cout << "Loan Status: " << (acc->hasLoan ? "Active (Due: $" + to_string(acc->totalLoanDue) + ")" : "None") << "\n";
-                } else {
-                    cout << "Account not found.\n";
-                }
+            case '7':
+                cout << "\n\n\tEnter The account No. : "; cin >> num;
+                modifyAccount(num);
                 break;
-            }
-            case 8:
-                printMiniStatement();
+            case '8':
+                cout << "\n\n\tEnter The account No. : "; cin >> num;
+                loanSection(num);
                 break;
-            case 9:
-                applyForLoan();
+            case '9':
+                cout << "\n\n\tEnter The account No. : "; cin >> num;
+                miniStatement(num);
                 break;
-            case 10:
-                repayLoan();
+            case '10':
+                cout << "\n\n\tThanks for using bank management system!";
                 break;
-            case 11:
-                cout << "Thank you for using ATM Service. Goodbye!\n";
-                return 0;
             default:
-                cout << "Invalid choice. Please try again.\n";
+                cout << "\a";
         }
-    }
+        cin.ignore();
+        cin.get();
+    } while (ch != '10');
     return 0;
 }
 
-//final bank service code
