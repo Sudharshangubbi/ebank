@@ -1,15 +1,9 @@
-// changes by shreyas
-// Structured account handling.
-//Modular code with class-based architecture.
-//Loan and statement tracking.
-//Update, search, and display capabilities.
-//File-based persistence using binary I/O.
-
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <ctime>
-#include <string>
+#include <vector>
+#include <algorithm>
 using namespace std;
 
 class Account {
@@ -34,38 +28,37 @@ public:
     void createAccount() {
         cout << "\nEnter The account No. : ";
         cin >> accNumber;
-        cout << "\n\nEnter The Name of The account Holder : ";
+        cout << "\nEnter The Name of The account Holder : ";
         cin.ignore();
         getline(cin, name);
         cout << "\nEnter Type of The account (C/S) : ";
         cin >> type;
         type = toupper(type);
-        cout << "\nEnter The Initial amount (>=500 for Saving and >=1000 for Current ): ";
+        cout << "\nEnter The Initial amount (>=500 for Saving and >=1000 for Current): ";
         cin >> balance;
         while ((type == 'S' && balance < 500) || (type == 'C' && balance < 1000)) {
             cout << "Insufficient balance. Please re-enter: ";
             cin >> balance;
         }
-        cout << "\n\nAccount Created..";
+        cout << "\nAccount Created Successfully.\n";
     }
 
     void showAccount() const {
         cout << "\nAccount No. : " << accNumber;
-        cout << "\nAccount Holder Name : " << name;
-        cout << "\nType of Account : " << type;
-        cout << "\nBalance amount : " << balance;
+        cout << "\nHolder Name : " << name;
+        cout << "\nType : " << type;
+        cout << "\nBalance : " << balance;
         cout << "\nLoan Taken : " << loanAmount;
     }
 
     void modify() {
-        cout << "\nAccount No. : " << accNumber;
-        cout << "\nModify Account Holder Name : ";
+        cout << "\nModify Account Holder Name: ";
         cin.ignore();
         getline(cin, name);
-        cout << "\nModify Type of Account : ";
+        cout << "Modify Type (C/S): ";
         cin >> type;
         type = toupper(type);
-        cout << "\nModify Balance amount : ";
+        cout << "Modify Balance: ";
         cin >> balance;
     }
 
@@ -76,7 +69,7 @@ public:
 
     void withdraw(double amt) {
         if (amt > balance) {
-            cout << "\nInsufficient balance!";
+            cout << "Insufficient balance!";
             return;
         }
         balance -= amt;
@@ -88,30 +81,23 @@ public:
         addStatement("Loan taken", amt);
     }
 
-    void displayStatement() const {
-        cout << "\nMini Statement:\n";
-        cout << statement;
-    }
-
     void addStatement(string action, double amt) {
         time_t now = time(0);
         char* dt = ctime(&now);
         statement += action + " of " + to_string(amt) + " on " + dt;
     }
 
-    int getAccountNumber() const {
-        return accNumber;
+    void displayStatement() const {
+        cout << "\nMini Statement:\n" << statement;
     }
 
-    double getBalance() const {
-        return balance;
-    }
-
-    char getType() const {
-        return type;
-    }
+    int getAccountNumber() const { return accNumber; }
+    double getBalance() const { return balance; }
+    char getType() const { return type; }
+    string getName() const { return name; }
 };
 
+// File Operations
 void writeAccount() {
     Account ac;
     ofstream outFile("account.dat", ios::binary | ios::app);
@@ -122,8 +108,8 @@ void writeAccount() {
 
 void displayAccount(int n) {
     Account ac;
-    bool found = false;
     ifstream inFile("account.dat", ios::binary);
+    bool found = false;
     while (inFile.read(reinterpret_cast<char*>(&ac), sizeof(Account))) {
         if (ac.getAccountNumber() == n) {
             ac.showAccount();
@@ -131,31 +117,29 @@ void displayAccount(int n) {
         }
     }
     inFile.close();
-    if (!found)
-        cout << "\n\nAccount number does not exist";
+    if (!found) cout << "\nAccount Not Found!\n";
 }
 
 void modifyAccount(int n) {
     Account ac;
-    fstream File;
+    fstream File("account.dat", ios::binary | ios::in | ios::out);
     bool found = false;
-    File.open("account.dat", ios::binary | ios::in | ios::out);
-    while (!File.eof() && found == false) {
+    while (!File.eof()) {
         streampos pos = File.tellg();
         File.read(reinterpret_cast<char*>(&ac), sizeof(Account));
         if (ac.getAccountNumber() == n) {
             ac.showAccount();
-            cout << "\n\nEnter The New Details of account" << endl;
+            cout << "\nEnter New Details:\n";
             ac.modify();
             File.seekp(pos);
             File.write(reinterpret_cast<char*>(&ac), sizeof(Account));
-            cout << "\n\n\t Record Updated";
             found = true;
+            cout << "\nAccount Updated.\n";
+            break;
         }
     }
     File.close();
-    if (!found)
-        cout << "\n\n Record Not Found ";
+    if (!found) cout << "\nRecord Not Found\n";
 }
 
 void deleteAccount(int n) {
@@ -163,171 +147,167 @@ void deleteAccount(int n) {
     ifstream inFile("account.dat", ios::binary);
     ofstream outFile("temp.dat", ios::binary);
     while (inFile.read(reinterpret_cast<char*>(&ac), sizeof(Account))) {
-        if (ac.getAccountNumber() != n) {
+        if (ac.getAccountNumber() != n)
             outFile.write(reinterpret_cast<char*>(&ac), sizeof(Account));
-        }
     }
     inFile.close();
     outFile.close();
     remove("account.dat");
     rename("temp.dat", "account.dat");
-    cout << "\n\n\tRecord Deleted ..";
+    cout << "\nAccount Deleted.\n";
 }
 
 void displayAll() {
     Account ac;
     ifstream inFile("account.dat", ios::binary);
-    cout << "\n\n\t\tACCOUNT HOLDER LIST\n\n";
-    cout << "====================================================\n";
-    cout << "A/c no.      NAME           Type  Balance  Loan\n";
-    cout << "====================================================\n";
+    cout << "\nACCOUNT HOLDER LIST:\n";
     while (inFile.read(reinterpret_cast<char*>(&ac), sizeof(Account))) {
-        cout << setw(10) << ac.getAccountNumber() << " ";
-        cout << setw(15) << ac.getType() << " ";
-        cout << setw(5) << ac.getType() << " ";
-        cout << setw(10) << fixed << setprecision(2) << ac.getBalance() << " ";
-        cout << endl;
+        ac.showAccount();
+        cout << "\n-------------------------------\n";
     }
     inFile.close();
 }
 
 void depositWithdraw(int n, int option) {
-    double amt;
-    bool found = false;
     Account ac;
-    fstream File;
-    File.open("account.dat", ios::binary | ios::in | ios::out);
-    while (!File.eof() && found == false) {
+    double amt;
+    fstream File("account.dat", ios::binary | ios::in | ios::out);
+    bool found = false;
+    while (!File.eof()) {
         streampos pos = File.tellg();
         File.read(reinterpret_cast<char*>(&ac), sizeof(Account));
         if (ac.getAccountNumber() == n) {
             ac.showAccount();
             if (option == 1) {
-                cout << "\n\n\tTO DEPOSIT AMOUNT ";
-                cout << "\n\nEnter The amount to be deposited: ";
-                cin >> amt;
+                cout << "\nEnter amount to deposit: "; cin >> amt;
                 ac.deposit(amt);
-            } else if (option == 2) {
-                cout << "\n\n\tTO WITHDRAW AMOUNT ";
-                cout << "\n\nEnter The amount to be withdrawn: ";
-                cin >> amt;
+            } else {
+                cout << "\nEnter amount to withdraw: "; cin >> amt;
                 ac.withdraw(amt);
             }
             File.seekp(pos);
             File.write(reinterpret_cast<char*>(&ac), sizeof(Account));
-            cout << "\n\n\t Record Updated";
+            cout << "\nTransaction successful.\n";
             found = true;
+            break;
         }
     }
     File.close();
-    if (!found)
-        cout << "\n\n Record Not Found ";
+    if (!found) cout << "\nAccount Not Found.\n";
 }
 
 void loanSection(int n) {
     Account ac;
-    fstream File;
     double amount;
+    fstream File("account.dat", ios::binary | ios::in | ios::out);
     bool found = false;
-    File.open("account.dat", ios::binary | ios::in | ios::out);
-    while (!File.eof() && found == false) {
+    while (!File.eof()) {
         streampos pos = File.tellg();
         File.read(reinterpret_cast<char*>(&ac), sizeof(Account));
         if (ac.getAccountNumber() == n) {
-            ac.showAccount();
-            cout << "\nEnter loan amount to apply: ";
+            cout << "\nEnter loan amount: ";
             cin >> amount;
             ac.addLoan(amount);
             File.seekp(pos);
             File.write(reinterpret_cast<char*>(&ac), sizeof(Account));
-            cout << "\nLoan processed successfully!";
+            cout << "\nLoan Granted.\n";
             found = true;
+            break;
         }
     }
     File.close();
-    if (!found)
-        cout << "\n\nAccount not found!";
+    if (!found) cout << "\nAccount Not Found.\n";
 }
 
 void miniStatement(int n) {
     Account ac;
     ifstream inFile("account.dat", ios::binary);
-    bool found = false;
     while (inFile.read(reinterpret_cast<char*>(&ac), sizeof(Account))) {
         if (ac.getAccountNumber() == n) {
             ac.displayStatement();
+            return;
+        }
+    }
+    cout << "\nAccount Not Found.\n";
+}
+
+// Extra Features
+void displayTop3AccountsByBalance() {
+    vector<Account> all;
+    Account ac;
+    ifstream inFile("account.dat", ios::binary);
+    while (inFile.read(reinterpret_cast<char*>(&ac), sizeof(Account))) {
+        all.push_back(ac);
+    }
+    inFile.close();
+
+    sort(all.begin(), all.end(), [](Account a, Account b) {
+        return a.getBalance() > b.getBalance();
+    });
+
+    cout << "\nTop 3 Accounts by Balance:\n";
+    for (size_t i = 0; i < min(all.size(), size_t(3)); ++i) {
+        all[i].showAccount();
+        cout << "\n-----------------------------\n";
+    }
+}
+
+void displayLowBalanceAccounts() {
+    double threshold;
+    cout << "\nEnter balance threshold: ";
+    cin >> threshold;
+
+    Account ac;
+    ifstream inFile("account.dat", ios::binary);
+    bool found = false;
+    while (inFile.read(reinterpret_cast<char*>(&ac), sizeof(Account))) {
+        if (ac.getBalance() < threshold) {
+            ac.showAccount();
+            cout << "\n---------------------------\n";
             found = true;
-            break;
         }
     }
     inFile.close();
-    if (!found)
-        cout << "\n\nAccount not found!";
+    if (!found) cout << "\nNo accounts below threshold.\n";
 }
 
+// Main Menu
 int main() {
-    char ch;
+    char choice;
     int num;
     do {
-        system("cls");
         cout << "\n\n\tBANK MANAGEMENT SYSTEM";
-        cout << "\n\n\t01. NEW ACCOUNT";
-        cout << "\n\n\t02. DEPOSIT AMOUNT";
-        cout << "\n\n\t03. WITHDRAW AMOUNT";
-        cout << "\n\n\t04. BALANCE ENQUIRY";
-        cout << "\n\n\t05. ALL ACCOUNT HOLDER LIST";
-        cout << "\n\n\t06. CLOSE AN ACCOUNT";
-        cout << "\n\n\t07. MODIFY AN ACCOUNT";
-        cout << "\n\n\t08. APPLY FOR LOAN";
-        cout << "\n\n\t09. MINI STATEMENT";
-        cout << "\n\n\t10. EXIT";
-        cout << "\n\n\tSelect Your Option (1-10): ";
-        cin >> ch;
-        system("cls");
-        switch (ch) {
-            case '1':
-                writeAccount();
-                break;
-            case '2':
-                cout << "\n\n\tEnter The account No. : "; cin >> num;
-                depositWithdraw(num, 1);
-                break;
-            case '3':
-                cout << "\n\n\tEnter The account No. : "; cin >> num;
-                depositWithdraw(num, 2);
-                break;
-            case '4':
-                cout << "\n\n\tEnter The account No. : "; cin >> num;
-                displayAccount(num);
-                break;
-            case '5':
-                displayAll();
-                break;
-            case '6':
-                cout << "\n\n\tEnter The account No. : "; cin >> num;
-                deleteAccount(num);
-                break;
-            case '7':
-                cout << "\n\n\tEnter The account No. : "; cin >> num;
-                modifyAccount(num);
-                break;
-            case '8':
-                cout << "\n\n\tEnter The account No. : "; cin >> num;
-                loanSection(num);
-                break;
-            case '9':
-                cout << "\n\n\tEnter The account No. : "; cin >> num;
-                miniStatement(num);
-                break;
-            case '10':
-                cout << "\n\n\tThanks for using bank management system!";
-                break;
-            default:
-                cout << "\a";
+        cout << "\n1. New Account";
+        cout << "\n2. Deposit Amount";
+        cout << "\n3. Withdraw Amount";
+        cout << "\n4. Balance Enquiry";
+        cout << "\n5. All Accounts";
+        cout << "\n6. Close Account";
+        cout << "\n7. Modify Account";
+        cout << "\n8. Apply Loan";
+        cout << "\n9. Mini Statement";
+        cout << "\nA. Top 3 Accounts by Balance";
+        cout << "\nB. Accounts below Threshold";
+        cout << "\n0. Exit";
+        cout << "\nSelect Your Option: ";
+        cin >> choice;
+
+        switch (toupper(choice)) {
+            case '1': writeAccount(); break;
+            case '2': cout << "Enter account no: "; cin >> num; depositWithdraw(num, 1); break;
+            case '3': cout << "Enter account no: "; cin >> num; depositWithdraw(num, 2); break;
+            case '4': cout << "Enter account no: "; cin >> num; displayAccount(num); break;
+            case '5': displayAll(); break;
+            case '6': cout << "Enter account no: "; cin >> num; deleteAccount(num); break;
+            case '7': cout << "Enter account no: "; cin >> num; modifyAccount(num); break;
+            case '8': cout << "Enter account no: "; cin >> num; loanSection(num); break;
+            case '9': cout << "Enter account no: "; cin >> num; miniStatement(num); break;
+            case 'A': displayTop3AccountsByBalance(); break;
+            case 'B': displayLowBalanceAccounts(); break;
+            case '0': cout << "\nThank you for using the system!\n"; break;
+            default: cout << "\nInvalid Option!\n";
         }
-        cin.ignore();
-        cin.get();
-    } while (ch != '10');
+    } while (choice != '0');
+
     return 0;
 }
-
